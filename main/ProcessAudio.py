@@ -10,6 +10,7 @@ from StringIO import StringIO
 accessId = '01ff3792-3f80-4ed6-ac51-2add16e0db68'
 baseUrl = 'https://api.sonicAPI.com/'
 
+class ProcessAubio:
 
 def requestParams(audioFilename):
   return {
