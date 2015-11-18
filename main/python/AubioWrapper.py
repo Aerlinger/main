@@ -4,6 +4,7 @@ from aubio import pitch as aubio_pitch
 from aubio import onset as aubio_onset
 from aubio import level_detection as aubio_level_detection
 import numpy as np
+import math
 
 class AubioWrapper:
   def __init__(self, audioFilename, baseFolder = os.path.join(os.path.dirname(__file__), "../data/")):
@@ -72,24 +73,29 @@ class AubioWrapper:
   def printNoteOff(self, frames):
     print "OFF: " + str(frames / 44100.0)
 
+  def pseudo_median(self, arr):
+    arrLen = len(arr)
+
+    return np.sort(arr)[(arrLen-1)/2]
+
   def notes(self):
     sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
 
     print self.fftWindowSize, self.hopSize
 
     onsetSampler = aubio_onset("default", self.fftWindowSize, self.hopSize, self.samplerate)
-    pitchSampler = aubio_pitch("yinfft", self.fftWindowSize, self.hopSize, self.samplerate)
-    pitchSampler.set_unit("midi")
+    pitchSampler = aubio_pitch("yinfft", self.fftWindowSize * 4, self.hopSize, self.samplerate)
+    # pitchSampler.set_unit("midi")
     pitchSampler.set_tolerance(1.0)
 
     median = 6
     isReady = 0
-    # curNote = 0
-
-    # notePitch = []
-    # noteAmplitude = []
 
     note_buffer = []
+
+    note_output = []
+    start_time = []
+    start_time = []
 
     # total number of frames read
     totalFrames = 0
@@ -99,34 +105,37 @@ class AubioWrapper:
       new_pitch = pitchSampler(samples)[0]
       curlevel = aubio_level_detection(samples, -90)
 
-      note_buffer += [new_pitch]
+      note_buffer.insert(0, new_pitch)
 
-      print new_pitch
+      if len(note_buffer) > median:
+        note_buffer.pop()
 
-      # if onsetSampler(samples):
-      #   if curlevel == 1.:
-      #     isReady = 0
-      #
-      #     # send noteoff
-      #     self.printNoteOff(totalFrames)
-      #
-      #   else:
-      #     isReady = 1
-      #
-      # else:
-      #   if isReady > 0:
-      #     isReady += 1
-      #   if isReady == median:
-      #     # New Note
-      #
-      #     # Send noteoff
-      #     self.printNoteOff(totalFrames)
-      #
-      #     new_note = np.median(note_buffer)
-      #     curNote = new_note
-      #
-      #     if freqtomidi(curNote) > 45:
-      #       self.printNoteOn(freqtomidi(curNote), totalFrames)
+      if onsetSampler(samples):
+        if curlevel == 1.:
+          isReady = 0
+
+
+          # self.printNoteOff(totalFrames)
+
+        else:
+          isReady = 1
+
+      else:
+        if isReady > 0:
+          isReady += 1
+        if isReady == median:
+          # New Note
+
+          # Send noteoff
+          self.printNoteOff(totalFrames)
+
+          new_note = self.pseudo_median(note_buffer)
+          curNote = new_note
+
+          # print curNote
+          # print note_buffer
+          if curNote > 45:
+            self.printNoteOn(round(freqtomidi(curNote)), totalFrames)
 
       totalFrames += read
       if read < self.hopSize: break
