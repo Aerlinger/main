@@ -2,6 +2,8 @@ import sys, os
 from aubio import source, freqtomidi
 from aubio import pitch as aubio_pitch
 from aubio import onset as aubio_onset
+from aubio import level_detection as aubio_level_detection
+import numpy as np
 
 class AubioWrapper:
   def __init__(self, audioFilename, baseFolder = os.path.join(os.path.dirname(__file__), "../data/")):
@@ -9,8 +11,8 @@ class AubioWrapper:
     self.audioFilename = audioFilename
 
     self.fftWindowSize = 512                 # fft size
-    self.hopSize = fftWindowSize / 2           # hop size
-    self.samplerate = 0
+    self.hopSize = 256           # hop size
+    self.samplerate = 44100
 
   def audioPath(self):
     return os.path.join(self.baseFolder, self.audioFilename)
@@ -44,6 +46,7 @@ class AubioWrapper:
     sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
 
     onsetSampler = aubio_onset("default", self.fftWindowSize, self.hopSize, self.samplerate)
+    # onsetSampler = aubio_level_detection(-70)
 
     # list of onsets, in samples
     onsets = []
@@ -62,6 +65,71 @@ class AubioWrapper:
       if read < self.hopSize: break
 
     return { "onsets": onsets }
+
+  def printNoteOn(self, pitch, frames):
+    print "ON: " + str(pitch) + " " + str(frames / 44100.0)
+
+  def printNoteOff(self, frames):
+    print "OFF: " + str(frames / 44100.0)
+
+  def notes(self):
+    sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
+
+    print self.fftWindowSize, self.hopSize
+
+    onsetSampler = aubio_onset("default", self.fftWindowSize, self.hopSize, self.samplerate)
+    pitchSampler = aubio_pitch("yinfft", self.fftWindowSize, self.hopSize, self.samplerate)
+    pitchSampler.set_unit("midi")
+    pitchSampler.set_tolerance(1.0)
+
+    median = 6
+    isReady = 0
+    # curNote = 0
+
+    # notePitch = []
+    # noteAmplitude = []
+
+    note_buffer = []
+
+    # total number of frames read
+    totalFrames = 0
+    while True:
+      samples, read = sourceBuffer()
+
+      new_pitch = pitchSampler(samples)[0]
+      curlevel = aubio_level_detection(samples, -90)
+
+      note_buffer += [new_pitch]
+
+      print new_pitch
+
+      # if onsetSampler(samples):
+      #   if curlevel == 1.:
+      #     isReady = 0
+      #
+      #     # send noteoff
+      #     self.printNoteOff(totalFrames)
+      #
+      #   else:
+      #     isReady = 1
+      #
+      # else:
+      #   if isReady > 0:
+      #     isReady += 1
+      #   if isReady == median:
+      #     # New Note
+      #
+      #     # Send noteoff
+      #     self.printNoteOff(totalFrames)
+      #
+      #     new_note = np.median(note_buffer)
+      #     curNote = new_note
+      #
+      #     if freqtomidi(curNote) > 45:
+      #       self.printNoteOn(freqtomidi(curNote), totalFrames)
+
+      totalFrames += read
+      if read < self.hopSize: break
 
 
   def pitch(self, baseSampleRate=44100):

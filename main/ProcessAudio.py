@@ -4,13 +4,15 @@ import os
 import json
 import glob
 
+from python.AubioWrapper import AubioWrapper
+
 from csvkit.convert import *
 from StringIO import StringIO
 
 accessId = '01ff3792-3f80-4ed6-ac51-2add16e0db68'
 baseUrl = 'https://api.sonicAPI.com/'
 
-class ProcessAubio:
+# class ProcessAubio:
 
 def requestParams(audioFilename):
   return {
@@ -123,10 +125,15 @@ def processFile(filename, destinationPath):
         f.write(json.dumps(meta, indent=2))
 
 
-timestamp = str(int(time.time()))
+# timestamp = str(int(time.time()))
 
-print("Creating destination path " + timestamp)
+# print("Creating destination path " + timestamp)
 
-for filename in glob.glob("data/process/*.mp3"):
-  processFile(filename, createTimestampedFolder(filename, timestamp))
+# for filename in glob.glob("data/process/*.mp3"):
+#   processFile(filename, createTimestampedFolder(filename, timestamp))
+
+aubio = AubioWrapper('a-drowning.mp3')
+
+aubio.notes()
+
 
