@@ -101,7 +101,7 @@ class AubioWrapper:
     onsetAlgorithm = options.get("onsetAlgorithm") or "default"
     algorithm = options.get("algorithm") or "yinfft"
     pitchUnit = options.get("pitchUnit") or "freq"
-    tolerance = options.get("tolerance") or 1.0
+    tolerance = options.get("tolerance") or 0.85
 
     sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
 
@@ -115,10 +115,14 @@ class AubioWrapper:
 
     note_buffer = []
 
-    timings = []
-    frames = []
+    timeStarts = []
+    timeStops = []
+    frameStarts = []
+    frameStops = []
     pitches = []
     confidences = []
+
+    isOn = False
 
     totalFrames = 0
     while True:
@@ -135,8 +139,6 @@ class AubioWrapper:
       if onsetSampler(samples):
         if curlevel == 1.:
           isReady = 0
-
-          self.printNoteOff(totalFrames)
         else:
           isReady = 1
 
@@ -144,22 +146,43 @@ class AubioWrapper:
         if isReady > 0:
           isReady += 1
         if isReady == median:
-          self.printNoteOff(totalFrames)
-
           new_note = self.pseudo_median(note_buffer)
-          curNote = new_note
 
-          if curNote > 45:
-            self.printNoteOn(round(freqtomidi(curNote)), totalFrames)
+          if isOn:
+            timeStops += [float(totalFrames) / self.samplerate]
+            frameStops += [totalFrames]
+            isOn = False
+
+          if new_note > 45:
+            confidence = pitchSampler.get_confidence()
+
+            timeStarts += [float(totalFrames) / self.samplerate]
+            frameStarts += [totalFrames]
+            pitches += [new_note]
+            confidences += [confidence]
+
+            isOn = True
 
       totalFrames += read
       if read < self.hopSize: break
+
+    frameStops += [totalFrames]
+    timeStops += [timeStops]
+
+    return {
+      "timeStarts": timeStarts,
+      "timeStops": timeStops,
+      "frameStarts": frameStarts,
+      "frameStops": frameStops,
+      "pitches": pitches,
+      "confidences": confidences
+    }
 
 
   def pitch(self, **options):
     algorithm = options.get("algorithm") or "yin"
     pitchUnit = options.get("pitchUnit") or "freq"
-    tolerance = options.get("tolerance") or 1.0
+    tolerance = options.get("tolerance") or 0.85
 
     sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
     samplerate = sourceBuffer.samplerate
@@ -180,6 +203,8 @@ class AubioWrapper:
       samples, read = sourceBuffer()
       pitchSample = pitchSampler(samples)[0]
       confidence = pitchSampler.get_confidence()
+
+      print pitchSample
 
       timings += [float(totalFrames) / samplerate]
       frames += [totalFrames]

@@ -1,7 +1,8 @@
 import json
 import os
 import time
-from csvkit.convert import *
+
+import pandas as pd
 
 class Writer:
   def __init__(self,
@@ -18,8 +19,6 @@ class Writer:
     return str(int(time.time()))
 
   def writeTable(self, jsonData, filename):
-    with open(self.destinationFolder + "/" + filename + ".csv", "w") as f:
-      f.write(json2csv(jsonData))
+    df = pd.DataFrame(jsonData)
 
-    with open(self.destinationPath + "/" + filename + ".json", "w") as f:
-      f.write(json.dumps(jsonData))
+    df.to_csv(self.destinationFolder + "/" + filename + ".csv")

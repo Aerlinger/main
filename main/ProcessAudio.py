@@ -3,10 +3,11 @@ import time
 import os
 import json
 import glob
+import pandas as pd
 
 from python.AubioWrapper import AubioWrapper
+from python.Writer import Writer
 
-from csvkit.convert import *
 from StringIO import StringIO
 
 accessId = '01ff3792-3f80-4ed6-ac51-2add16e0db68'
@@ -134,6 +135,10 @@ def processFile(filename, destinationPath):
 
 aubio = AubioWrapper('a-drowning.mp3')
 
-aubio.notes()
+writer = Writer("a-drowning.mp3")
 
+writer.writeTable(aubio.notes(), "notes")
+writer.writeTable(aubio.pitch(), "pitch")
+writer.writeTable(aubio.onset(), "onset")
+writer.writeTable(aubio.mfcc(), "mfcc")
 
