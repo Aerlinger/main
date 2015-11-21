@@ -6,11 +6,10 @@ import pandas as pd
 
 class Writer:
   def __init__(self,
-               audioFilename,
                destinationPath = os.path.join(os.path.dirname(__file__), "../data/")):
     self.destinationPath = destinationPath
     self.timestamp = Writer.timestamp()
-    self.destinationFolder = destinationPath + self.timestamp + "/" + audioFilename + "/"
+    self.destinationFolder = destinationPath + self.timestamp
 
     os.makedirs(self.destinationFolder)
 

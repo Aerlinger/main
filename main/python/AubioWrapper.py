@@ -7,8 +7,7 @@ import numpy as np
 
 
 class AubioWrapper:
-  def __init__(self, audioFilename, baseFolder=os.path.join(os.path.dirname(__file__), "../data/")):
-    self.baseFolder = baseFolder
+  def __init__(self, audioFilename):
     self.audioFilename = audioFilename
 
     self.fftWindowSize = 512  # fft size
@@ -22,7 +21,7 @@ class AubioWrapper:
     nFilters = options.get("nFilters") or 40  # must be 40 for mfcc
     nCoeffs = options.get("nCoefs") or 13
 
-    sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
+    sourceBuffer = source(self.audioFilename, self.samplerate, self.hopSize)
 
     pvocBuffer = pvoc(self.fftWindowSize, self.hopSize)
     mfccBuffer = mfcc(self.fftWindowSize, nFilters, nCoeffs, self.samplerate)
@@ -45,17 +44,13 @@ class AubioWrapper:
 
       if read < self.hopSize: break
 
-    return {
-      "mfccs": mfccs,
-      "timings": timings,
-      "frames": frames
-    }
+    return mfccs
 
   def onset(self, **options):
     onsetAlgorithm = options.get("onsetAlgorithm") or "default"
     onsetThreshold = options.get("onsetThreshold") or -90
 
-    sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
+    sourceBuffer = source(self.audioFilename, self.samplerate, self.hopSize)
 
     onsetSampler = aubio_onset(onsetAlgorithm, self.fftWindowSize, self.hopSize, self.samplerate)
     # onsetSampler = aubio_level_detection(-70)
@@ -71,11 +66,12 @@ class AubioWrapper:
       samples, read = sourceBuffer()
 
       if onsetSampler(samples):
-        print "%f" % onsetSampler.get_last_s()
+        # print "%f" % onsetSampler.get_last_s()
+        timings.append(onsetSampler.get_last_s())
+        frames += [totalFrames]
         onsets.append(onsetSampler.get_last())
 
-      timings += [float(totalFrames) / self.samplerate]
-      frames += [totalFrames]
+
       totalFrames += read
 
       if read < self.hopSize: break
@@ -103,7 +99,7 @@ class AubioWrapper:
     pitchUnit = options.get("pitchUnit") or "freq"
     tolerance = options.get("tolerance") or 0.85
 
-    sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
+    sourceBuffer = source(self.audioFilename, self.samplerate, self.hopSize)
 
     onsetSampler = aubio_onset(onsetAlgorithm, self.fftWindowSize, self.hopSize, self.samplerate)
     pitchSampler = aubio_pitch(algorithm, self.fftWindowSize * 4, self.hopSize, self.samplerate)
@@ -166,8 +162,10 @@ class AubioWrapper:
       totalFrames += read
       if read < self.hopSize: break
 
-    frameStops += [totalFrames]
-    timeStops += [timeStops]
+    if len(frameStops) < len(frameStarts): frameStops += [totalFrames]
+    if len(timeStops) < len(timeStarts): timeStops += [timeStops]
+
+    # timeStops += [timeStops]
 
     return {
       "timeStarts": timeStarts,
@@ -184,7 +182,7 @@ class AubioWrapper:
     pitchUnit = options.get("pitchUnit") or "freq"
     tolerance = options.get("tolerance") or 0.85
 
-    sourceBuffer = source(self.audioPath(), self.samplerate, self.hopSize)
+    sourceBuffer = source(self.audioFilename, self.samplerate, self.hopSize)
     samplerate = sourceBuffer.samplerate
 
     pitchSampler = aubio_pitch(algorithm, self.fftWindowSize, self.hopSize, self.samplerate)
@@ -203,8 +201,6 @@ class AubioWrapper:
       samples, read = sourceBuffer()
       pitchSample = pitchSampler(samples)[0]
       confidence = pitchSampler.get_confidence()
-
-      print pitchSample
 
       timings += [float(totalFrames) / samplerate]
       frames += [totalFrames]
